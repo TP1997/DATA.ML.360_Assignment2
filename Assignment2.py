@@ -119,19 +119,6 @@ def predict_unrated(uid):
 
 user_id = 0
 pred_ratings, movie_idxs = predict_unrated(user_id)
-
-#%% Print top suggestions for user
-N=5
-top_filter = get_n_largest_idx(pred_ratings, N)
-pred_ratings_top = pred_ratings[top_filter]
-movie_idxs_top = movie_idxs[top_filter]
-
-print('List of {} most relevant movies for user {}:'.format(N, user_id+1))
-for pr,mi in zip(pred_ratings_top, movie_idxs_top):
-    movie_id = all_movie_ids[mi]
-    movie_name = df_movies.loc[df_movies['movieId']==movie_id].get('title').values[0]
-    print('Pred. rating: {}'.format(pr))
-    print('(Id : {}), {}\n'.format(movie_id, movie_name))
     
 #%%
 ''' Part A starts '''
@@ -178,7 +165,7 @@ group_common_idxs = group_movie_idxs[0][group_common_idxs[0]]
 #%% Aggregation using the average method
 group_means = group_common_ratings.mean(axis=0)
 # Get N recommendations
-N = 5
+N = 20
 top_mask = get_n_largest_idx(group_means, N)
 top_common_ratings = group_means[top_mask]
 top_common_idxs = group_common_idxs[top_mask]
@@ -190,7 +177,7 @@ print('------------------------------------------------------')
 for tcr, tci in zip(top_common_ratings, top_common_idxs):
     movie_id = all_movie_ids[tci]
     movie_name = df_movies.loc[df_movies['movieId']==movie_id].get('title').values[0]
-    print('Pred. rating: {}'.format(tcr))
+    #print('Pred. rating: {}'.format(tcr))
     print('(Id : {}), {}\n'.format(movie_id, movie_name))
 
 print()
@@ -201,7 +188,7 @@ group_minimums = np.min(np.ma.masked_array(gcr, np.isnan(gcr)), axis=0).data
 # Function above gives nan-values numeric value of 1.e+20. Set those to small values.
 group_minimums[group_minimums==1.e+20] = -1.e+5
 # Get N recommendations
-N = 5
+N = 20
 top_mask = get_n_largest_idx(group_minimums, N)
 top_common_ratings = group_minimums[top_mask]
 top_common_idxs = group_common_idxs[top_mask]
@@ -213,71 +200,45 @@ print('------------------------------------------------------')
 for tcr, tci in zip(top_common_ratings, top_common_idxs):
     movie_id = all_movie_ids[tci]
     movie_name = df_movies.loc[df_movies['movieId']==movie_id].get('title').values[0]
-    print('Pred. rating: {}'.format(tcr))
+    #print('Pred. rating: {}'.format(tcr))
     print('(Id : {}), {}\n'.format(movie_id, movie_name))
     
 print()
 
 #%%
-n=np.array([1,2,3,4,np.nan])
-get_n_largest_idx(n, 2)
-#%%
-a = np.array(np.array([1,2,1.e+20]))
-c = np.array(np.array([1,3,1.e+20]))
-b = np.array(np.array([1,4,1.e+20]))
+''' Part B starts '''
+#%% Considering disagreements between users
+def calc_weights(var, epsilon=0):
+    var += epsilon
+    return var**(-1) / np.nansum(var**(-1))
 
-g = np.array([a,b,c], dtype='object')
-gg = g.astype('float32')
-m = np.min(np.ma.masked_array(gg, np.isnan(gg)), axis=0).data
+# Calculate needed statistics
+gcr = group_common_ratings.astype('float32')
+group_means = gcr.mean(axis=0)
+group_vars = gcr.var(axis=0)
+# Create vector of weights
+group_weights = calc_weights(group_vars, 2)
+group_scores = group_weights * group_means
+# This can also be used if precision gets too low
+#group_scores = -np.log(group_weights) * group_means
+# Get N recommendations
+N = 20
+top_mask = get_n_largest_idx(group_scores, N)
+top_common_ratings = group_scores[top_mask]
+top_common_idxs = group_common_idxs[top_mask]
 
-#%%
-gg[gg==1.e+20] = -1.e+5
-#%%
-aa = np.array([[1,2,3],[2,np.NaN,4]])
+# Print the results
+print('Group recommendations using new method.')
+print('List of {} most relevant movies for user group {}:'.format(N, user_group+1))
+print('------------------------------------------------------')
+for tcr, tci in zip(top_common_ratings, top_common_idxs):
+    movie_id = all_movie_ids[tci]
+    movie_name = df_movies.loc[df_movies['movieId']==movie_id].get('title').values[0]
+    #print('Pred. rating: {}'.format(tcr))
+    print('(Id : {}), {}\n'.format(movie_id, movie_name))
 
-k = np.min(np.ma.masked_array(a, np.isnan(a)), axis=0)
+print()
 
-
-
-
-
-
-
-
-#%% Consider those movies only, which were unrated by all
-a1=group_movie_idxs[1]
-a2=group_movie_idxs[2]
-group_common= np.intersect1d(a1,a2)
-#group_common = np.intersect1d(group_common, group_movie_idxs[2])
-
-#%%
-group_common_ridx = np.in1d(a1,a2)
-
-#%%
-a=np.array([1,2,3,4,5])
-b=np.array([3,4,5,6,7,8])
-c=np.array([4,5,6,7,8,9,10])
-group=[a,b,c]
-
-group_common= np.intersect1d(group[0],group[1])
-#group_common_idx = np.in1d(group[0],group[1])
-for i in range(2, len(group)):
-    group_common = np.intersect1d(group_common,group[i])
- 
-group_common_idxs = []
-for g in group:
-    common_idx = np.in1d(g, group_common)
-    group_common_idxs.append(common_idx)
-
-
-#%%
-group_common_ridx = np.intersect1d(group_movie_idxs[0], 
-                                   group_movie_idxs[1],
-                                   return_indices=True)
-
-#group_common_ridx = np.intersect1d(group_common, 
-#                                   group_movie_idxs[2],
-#                                   return_indices=True)
     
 
 

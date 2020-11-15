@@ -1,0 +1,4 @@
+# Skip these
+tst?.py
+debug_data/*
+*.odt
