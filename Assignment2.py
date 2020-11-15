@@ -220,7 +220,7 @@ group_vars = gcr.var(axis=0)
 group_weights = calc_weights(group_vars, 2)
 group_scores = group_weights * group_means
 # This can also be used if precision gets too low
-#group_scores = -np.log(group_weights) * group_means
+#group_scores = np.log(group_weights) * group_means
 # Get N recommendations
 N = 20
 top_mask = get_n_largest_idx(group_scores, N)
